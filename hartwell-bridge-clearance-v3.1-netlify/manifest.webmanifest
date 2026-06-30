@@ -1,0 +1,13 @@
+{
+  "name": "Lake Hartwell Bridge Clearance",
+  "short_name": "Hartwell Clearance",
+  "description": "Live bridge clearance checker for Lake Hartwell.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f1e4",
+  "theme_color": "#173628",
+  "orientation": "portrait",
+  "icons": [
+    {"src":"/assets/icon.svg","sizes":"any","type":"image/svg+xml"}
+  ]
+}

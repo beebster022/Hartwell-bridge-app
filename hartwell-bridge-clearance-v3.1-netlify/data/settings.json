@@ -1,0 +1,10 @@
+{
+  "version": "3.1",
+  "fullPool": 660.0,
+  "boatHeight": 7.83,
+  "safetyBuffer": 1.0,
+  "cautionMargin": 2.0,
+  "staleAfterMinutes": 180,
+  "lakeLevelEndpoint": "/.netlify/functions/lake-level",
+  "directUsgsEndpoint": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=02187010&parameterCd=00062&siteStatus=all"
+}

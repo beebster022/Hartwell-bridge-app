@@ -1,0 +1,212 @@
+[
+  {
+    "id": "BR-001",
+    "waterway": "Seneca River",
+    "road": "SC 24",
+    "name": "SC 24 / Seneca River",
+    "lat": 34.5056,
+    "lon": -82.8235,
+    "elev": 672.5,
+    "full": 12.5
+  },
+  {
+    "id": "BR-002",
+    "waterway": "Seneca River",
+    "road": "I-85",
+    "name": "I-85 / Seneca River",
+    "lat": 34.5145,
+    "lon": -82.822,
+    "elev": 676.5,
+    "full": 16.5
+  },
+  {
+    "id": "BR-003",
+    "waterway": "Seneca River",
+    "road": "SC 37 & RR",
+    "name": "Cherry Rd & Railroad Truss / Seneca River",
+    "lat": 34.6925,
+    "lon": -82.839,
+    "elev": 669.5,
+    "full": 9.5
+  },
+  {
+    "id": "BR-004",
+    "waterway": "Seneca River",
+    "road": "SC 28",
+    "name": "SC 28 / Seneca River",
+    "lat": 34.6882,
+    "lon": -82.8398,
+    "elev": 671.5,
+    "full": 11.5
+  },
+  {
+    "id": "BR-005",
+    "waterway": "Seneca River",
+    "road": "US 123 & 76",
+    "name": "US 123 & US 76 / Seneca River",
+    "lat": 34.6818,
+    "lon": -82.8385,
+    "elev": 670.0,
+    "full": 10.0
+  },
+  {
+    "id": "BR-006",
+    "waterway": "26-Mile Creek",
+    "road": "SC 24",
+    "name": "SC 24 / 26-Mile Creek",
+    "lat": 34.5152,
+    "lon": -82.8628,
+    "elev": 671.5,
+    "full": 11.5
+  },
+  {
+    "id": "BR-007",
+    "waterway": "26-Mile Creek",
+    "road": "SC 71",
+    "name": "SC 71 / 26-Mile Creek",
+    "lat": 34.5565,
+    "lon": -82.8338,
+    "elev": 667.5,
+    "full": 7.5
+  },
+  {
+    "id": "BR-008",
+    "waterway": "26-Mile Creek",
+    "road": "US 76 & SC 28",
+    "name": "US 76 & SC 28 / 26-Mile Creek",
+    "lat": 34.6212,
+    "lon": -82.8254,
+    "elev": 670.0,
+    "full": 10.0
+  },
+  {
+    "id": "BR-009",
+    "waterway": "26-Mile Creek",
+    "road": "US 178",
+    "name": "US 178 / 26-Mile Creek",
+    "lat": 34.628,
+    "lon": -82.803,
+    "elev": 669.5,
+    "full": 9.5
+  },
+  {
+    "id": "BR-010",
+    "waterway": "Tugaloo River",
+    "road": "I-85",
+    "name": "I-85 / Tugaloo River",
+    "lat": 34.4977,
+    "lon": -83.0657,
+    "elev": 671.0,
+    "full": 11.0
+  },
+  {
+    "id": "BR-011",
+    "waterway": "Tugaloo River",
+    "road": "US 123",
+    "name": "US 123 / Tugaloo River",
+    "lat": 34.5948,
+    "lon": -83.1646,
+    "elev": 671.0,
+    "full": 11.0
+  },
+  {
+    "id": "BR-012",
+    "waterway": "Tugaloo River",
+    "road": "GA 184 & SC 160",
+    "name": "GA 184 / SC 160 / Tugaloo River",
+    "lat": 34.4988,
+    "lon": -83.1889,
+    "elev": 668.5,
+    "full": 8.5
+  },
+  {
+    "id": "BR-013",
+    "waterway": "23-Mile Creek",
+    "road": "I-85",
+    "name": "I-85 / 23-Mile Creek",
+    "lat": 34.5002,
+    "lon": -82.9889,
+    "elev": 681.0,
+    "full": 21.0
+  },
+  {
+    "id": "BR-014",
+    "waterway": "23-Mile Creek",
+    "road": "SC 71",
+    "name": "SC 71 / 23-Mile Creek",
+    "lat": 34.554,
+    "lon": -82.9715,
+    "elev": 668.5,
+    "full": 8.5
+  },
+  {
+    "id": "BR-015",
+    "waterway": "Keowee River",
+    "road": "SC 27",
+    "name": "SC 27 / Keowee River",
+    "lat": 34.7316,
+    "lon": -82.8952,
+    "elev": 668.0,
+    "full": 8.0
+  },
+  {
+    "id": "BR-016",
+    "waterway": "Lightwood Log Creek",
+    "road": "GA 51 & GA 77",
+    "name": "GA 51 & GA 77 / Lightwood Log Creek",
+    "lat": 34.3625,
+    "lon": -83.0656,
+    "elev": 669.5,
+    "full": 9.5
+  },
+  {
+    "id": "BR-017",
+    "waterway": "Fair Play Creek",
+    "road": "I-85",
+    "name": "I-85 / Fair Play Creek",
+    "lat": 34.4895,
+    "lon": -82.9988,
+    "elev": 671.0,
+    "full": 11.0
+  },
+  {
+    "id": "BR-018",
+    "waterway": "Coneross Creek",
+    "road": "S-184",
+    "name": "S-184 / Coneross Creek",
+    "lat": 34.6364,
+    "lon": -82.9248,
+    "elev": 668.0,
+    "full": 8.0
+  },
+  {
+    "id": "BR-019",
+    "waterway": "Martin Creek",
+    "road": "S-65",
+    "name": "S-65 / Martin Creek",
+    "lat": 34.5763,
+    "lon": -82.9554,
+    "elev": 668.0,
+    "full": 8.0
+  },
+  {
+    "id": "BR-020",
+    "waterway": "Seneca Creek",
+    "road": "S-210",
+    "name": "S-210 / Seneca Creek",
+    "lat": 34.6797,
+    "lon": -82.8996,
+    "elev": 668.0,
+    "full": 8.0
+  },
+  {
+    "id": "BR-021",
+    "waterway": "Centerville Rd",
+    "road": "Centerville Rd",
+    "name": "Centerville Rd / Anderson low bridge",
+    "lat": 34.522,
+    "lon": -82.789,
+    "elev": 667.5,
+    "full": 7.5
+  }
+]
