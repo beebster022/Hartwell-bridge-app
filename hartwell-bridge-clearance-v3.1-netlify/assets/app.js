@@ -10,7 +10,8 @@ const state = {
   map: null,
   userMarker: null,
   bridgeMarkers: new Map(),
-  latestRows: []
+  latestRows: [],
+  expandedBridgeIds: new Set()
 };
 
 const $ = id => document.getElementById(id);
@@ -64,6 +65,7 @@ function bindEvents(){
   $('centerMap').addEventListener('click', centerOnMe);
   $('fitMap').addEventListener('click', fitMap);
   $('soundBtn').addEventListener('click', enableSound);
+  $('list').addEventListener('click', handleBridgeToggle);
   window.addEventListener('resize', refreshMapLayout);
   window.addEventListener('orientationchange', refreshMapLayout);
   window.addEventListener('scroll', refreshMapLayout, {passive:true});
@@ -240,19 +242,43 @@ function sortRows(rows){
 
 function renderList(rows){
   $('list').innerHTML = rows.map(r=>`
-    <article class="bridge">
-      <div class="topline"><h3>${escapeHtml(r.name)}</h3><strong>${r.distance!==null?fmt(r.distance)+' mi':''}</strong></div>
-      <span class="tag ${r.status}">${r.status==='pass'?'PASS':r.status==='caution'?'CAUTION':'NO-GO'}</span>
-      ${r.ahead?'<span class="tag caution">NEXT AHEAD</span>':''}
-      <div class="meta">
-        <div><span class="small">Available</span><div class="value">${fmt(r.available)} ft</div></div>
-        <div><span class="small">Margin</span><div class="value">${fmt(r.margin)} ft</div></div>
-        <div><span class="small">Bridge elev.</span><div class="value">${fmt(r.elev)}</div></div>
-        <div><span class="small">Full-pool clearance</span><div class="value">${fmt(r.full)}</div></div>
+    <article class="bridge ${state.expandedBridgeIds.has(r.id)?'expanded':''}">
+      <button class="bridge-toggle" type="button" data-bridge-id="${escapeHtml(r.id)}" aria-expanded="${state.expandedBridgeIds.has(r.id)}" aria-controls="bridge-details-${escapeHtml(r.id)}">
+        <span class="bridge-name">${escapeHtml(r.name)}</span>
+        <span class="bridge-summary">
+          <span class="tag ${r.status}">${r.status==='pass'?'PASS':r.status==='caution'?'CAUTION':'NO-GO'}</span>
+          ${r.ahead?'<span class="tag caution">NEXT AHEAD</span>':''}
+          <span class="summary-metric">${fmt(r.margin)} ft margin</span>
+          ${r.distance!==null?`<span class="summary-metric">${fmt(r.distance)} mi</span>`:''}
+          <span class="chevron" aria-hidden="true">⌄</span>
+        </span>
+      </button>
+      <div class="bridge-details" id="bridge-details-${escapeHtml(r.id)}" ${state.expandedBridgeIds.has(r.id)?'':'hidden'}>
+        <div class="meta">
+          <div><span class="small">Available</span><div class="value">${fmt(r.available)} ft</div></div>
+          <div><span class="small">Margin</span><div class="value">${fmt(r.margin)} ft</div></div>
+          <div><span class="small">Bridge elev.</span><div class="value">${fmt(r.elev)}</div></div>
+          <div><span class="small">Full-pool clearance</span><div class="value">${fmt(r.full)}</div></div>
+        </div>
+        <p class="small">${escapeHtml(r.waterway)} • ${escapeHtml(r.road)}${r.bearing!==null?' • Bearing '+Math.round(r.bearing)+'°':''}</p>
+        <p class="small"><a target="_blank" rel="noopener" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a></p>
       </div>
-      <p class="small">${escapeHtml(r.waterway)} • ${escapeHtml(r.road)}${r.bearing!==null?' • Bearing '+Math.round(r.bearing)+'°':''}</p>
-      <p class="small"><a target="_blank" rel="noopener" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a></p>
     </article>`).join('');
+}
+
+function handleBridgeToggle(event){
+  const button = event.target.closest('.bridge-toggle');
+  if(!button) return;
+  const id = button.dataset.bridgeId;
+  if(!id) return;
+  if(state.expandedBridgeIds.has(id)) state.expandedBridgeIds.delete(id);
+  else state.expandedBridgeIds.add(id);
+  const article = button.closest('.bridge');
+  const details = article?.querySelector('.bridge-details');
+  const expanded = state.expandedBridgeIds.has(id);
+  button.setAttribute('aria-expanded', String(expanded));
+  article?.classList.toggle('expanded', expanded);
+  if(details) details.hidden = !expanded;
 }
 
 function updateFooter(rows,lake,boat,buffer,required){
