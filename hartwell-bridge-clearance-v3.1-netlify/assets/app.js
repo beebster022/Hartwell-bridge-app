@@ -64,6 +64,9 @@ function bindEvents(){
   $('centerMap').addEventListener('click', centerOnMe);
   $('fitMap').addEventListener('click', fitMap);
   $('soundBtn').addEventListener('click', enableSound);
+  window.addEventListener('resize', refreshMapLayout);
+  window.addEventListener('orientationchange', refreshMapLayout);
+  window.addEventListener('scroll', refreshMapLayout, {passive:true});
 }
 
 function markManual(){
@@ -290,6 +293,7 @@ function initMap(){
   state.map = L.map('map', {scrollWheelZoom:false}).setView([34.55,-82.95], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
   fitMap();
+  refreshMapLayout();
 }
 function markerColor(status){ return status==='pass'?'#2e8b57':status==='caution'?'#c39122':'#b03a2e'; }
 function bridgeIcon(status){ return L.divIcon({className:'', html:`<div style="width:18px;height:18px;border-radius:50%;background:${markerColor(status)};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`, iconSize:[18,18], iconAnchor:[9,9]}); }
@@ -302,6 +306,7 @@ function updateMapMarkers(rows){
     if(existing){ existing.setIcon(bridgeIcon(r.status)); existing.setPopupContent(popup); }
     else { state.bridgeMarkers.set(r.id, L.marker([r.lat,r.lon], {icon:bridgeIcon(r.status)}).addTo(state.map).bindPopup(popup)); }
   }
+  refreshMapLayout();
 }
 function updateUserMarker(){
   if(!state.map || !state.user || !window.L) return;
@@ -310,7 +315,20 @@ function updateUserMarker(){
   else state.userMarker=L.marker(ll,{icon:userIcon(), zIndexOffset:1000}).addTo(state.map).bindPopup('Your location');
 }
 function centerOnMe(){ if(state.map && state.user) state.map.setView([state.user.lat,state.user.lon], 14); else useGps(); }
-function fitMap(){ if(!state.map || !state.bridges.length || !window.L) return; const pts=state.bridges.map(b=>[b.lat,b.lon]); if(state.user) pts.push([state.user.lat,state.user.lon]); state.map.fitBounds(L.latLngBounds(pts), {padding:[24,24]}); }
+function fitMap(){ if(!state.map || !state.bridges.length || !window.L) return; const pts=state.bridges.map(b=>[b.lat,b.lon]); if(state.user) pts.push([state.user.lat,state.user.lon]); state.map.fitBounds(L.latLngBounds(pts), {padding:[24,24]}); refreshMapLayout(); }
+
+let mapRefreshTimer = null;
+function refreshMapLayout(){
+  if(!state.map || !window.L) return;
+  if(mapRefreshTimer) clearTimeout(mapRefreshTimer);
+  const redraw = () => {
+    const el = $('map');
+    if(!el || !el.offsetWidth || !el.offsetHeight) return;
+    state.map.invalidateSize({pan:false});
+  };
+  requestAnimationFrame(redraw);
+  mapRefreshTimer = setTimeout(redraw, 250);
+}
 
 function distanceMiles(lat1,lon1,lat2,lon2){
   const R=3958.7613, dLat=rad(lat2-lat1), dLon=rad(lon2-lon1);
