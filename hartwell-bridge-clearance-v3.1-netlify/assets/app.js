@@ -15,7 +15,13 @@ const state = {
 
 const $ = id => document.getElementById(id);
 const fmt = n => Number.isFinite(n) ? n.toFixed(2) : '--';
-const feetIn = ft => { const feet = Math.floor(ft); const inches = Math.round((ft-feet)*12); return `${feet}'${String(inches).padStart(1,'0')}\"`; };
+const feetIn = ft => {
+  if (!Number.isFinite(ft) || ft < 0) return '--';
+  const totalInches = Math.round(ft * 12);
+  const feet = Math.floor(totalInches / 12);
+  const inches = Math.abs(totalInches % 12);
+  return `${feet}'${inches}"`;
+};
 
 async function init(){
   await loadSettings();
@@ -182,6 +188,16 @@ function beep(ms=160, freq=520){
 
 function calculate(){
   const lake=Number($('lake').value), boat=Number($('boat').value), buffer=Number($('buffer').value), caution=Number($('caution').value);
+  const inputError = validateInputs({lake, boat, buffer, caution});
+  if(inputError){
+    setBadge('manual','Check inputs');
+    setSource(inputError);
+    $('passCount').textContent='0'; $('cautionCount').textContent='0'; $('nogoCount').textContent='0';
+    $('list').innerHTML = `<div class="warning">${escapeHtml(inputError)}</div>`;
+    updateFooter([],lake,boat,buffer,NaN);
+    updateSortNote();
+    return;
+  }
   const required=boat+buffer;
   let pass=0,caut=0,nogo=0;
   const rows = state.bridges.map(b=>{
@@ -199,6 +215,14 @@ function calculate(){
   state.latestRows=rows;
   $('passCount').textContent=pass; $('cautionCount').textContent=caut; $('nogoCount').textContent=nogo;
   renderList(rows); updateMapMarkers(rows); updateFooter(rows,lake,boat,buffer,required); warnIfNeeded(rows); updateSortNote();
+}
+
+function validateInputs({lake, boat, buffer, caution}){
+  if(!Number.isFinite(lake)) return 'Enter a valid lake level before checking bridge clearance.';
+  if(!Number.isFinite(boat) || boat < 0) return 'Enter a valid boat height before checking bridge clearance.';
+  if(!Number.isFinite(buffer) || buffer < 0) return 'Enter a valid safety buffer before checking bridge clearance.';
+  if(!Number.isFinite(caution) || caution < 0) return 'Enter a valid caution margin before checking bridge clearance.';
+  return '';
 }
 
 function sortRows(rows){
@@ -230,8 +254,9 @@ function renderList(rows){
 
 function updateFooter(rows,lake,boat,buffer,required){
   const worst = rows.slice().sort((a,b)=>a.margin-b.margin)[0];
-  const nearby = state.user ? rows.find(r=>r.distance!==null) : worst;
-  const key = nearby || worst;
+  const nearest = state.user ? rows.slice().filter(r=>r.distance!==null).sort((a,b)=>a.distance-b.distance)[0] : null;
+  const nearbyRisk = state.user ? rows.slice().filter(r=>r.distance!==null && r.distance < .5 && (r.status==='nogo' || r.status==='caution')).sort((a,b)=>a.distance-b.distance)[0] : null;
+  const key = nearbyRisk || nearest || worst;
   $('footerLake').textContent=`🌊 Lake ${fmt(lake)}'`;
   $('footerDetails').textContent=`Boat ${feetIn(boat)} • Buffer ${feetIn(buffer)} • Required ${feetIn(required)}`;
   const f=$('footerStatus'); f.className='sticky-status '+(key?.status||'');
@@ -245,11 +270,23 @@ function warnIfNeeded(rows){
 }
 function updateSortNote(){
   const mode=$('sortMode').value;
-  $('sortNote').textContent = state.user ? `GPS active. Sort: ${mode}.` : 'Sorted by tightest clearance until GPS is enabled.';
+  const labels = {
+    smart: state.user ? 'Smart sort: next or nearest bridge first.' : 'Smart sort: tightest margin first until GPS is enabled.',
+    ahead: state.user ? 'Sorted by next bridge ahead.' : 'Next-ahead sorting needs GPS heading.',
+    distance: state.user ? 'Sorted by nearest GPS distance.' : 'Distance sorting needs GPS or manual location.',
+    margin: 'Sorted by tightest margin.',
+    clearance: 'Sorted by lowest available clearance.',
+    name: 'Sorted by bridge name.'
+  };
+  $('sortNote').textContent = labels[mode] || 'Sorted bridges.';
 }
 
 function initMap(){
-  if(!window.L) return;
+  if(!window.L){
+    $('mapNote').textContent = 'Map library could not load. Bridge list and clearance calculations still work.';
+    $('map').innerHTML = '<div class="map-fallback">Map unavailable. Use the bridge list or Open in Maps links.</div>';
+    return;
+  }
   state.map = L.map('map', {scrollWheelZoom:false}).setView([34.55,-82.95], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
   fitMap();
