@@ -40,6 +40,11 @@ async function init(){
 
 async function loadSettings(){
   try { state.settings = {...state.settings, ...(await (await fetch('/data/settings.json', {cache:'no-cache'})).json())}; } catch {}
+  try {
+    const res = await fetch('/.netlify/functions/app-settings', {cache:'no-cache'});
+    const runtimeSettings = await res.json();
+    if(res.ok && runtimeSettings.ok) state.settings = {...state.settings, ...runtimeSettings.settings};
+  } catch {}
   $('boat').value = state.settings.boatHeight;
   $('buffer').value = state.settings.safetyBuffer;
   $('caution').value = state.settings.cautionMargin;
