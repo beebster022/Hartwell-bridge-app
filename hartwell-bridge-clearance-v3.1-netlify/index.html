@@ -9,7 +9,7 @@
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/assets/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQngtqU3pWBfR7nlzMQVUX0MYSj0n0M=" crossorigin="" />
-  <link rel="stylesheet" href="/assets/styles.css?v=3.1.3" />
+  <link rel="stylesheet" href="/assets/styles.css?v=3.1.5" />
 </head>
 <body>
 <header>
@@ -80,7 +80,7 @@
   <section class="card">
     <div class="topline"><h2>Bridge Clearance Check</h2><div class="small" id="sortNote">Sorted by tightest clearance until GPS is enabled.</div></div>
     <div id="list"></div>
-    <div class="footer">Bridge clearances are bridge elevation minus current lake level. Full-pool basis is 660 ft MSL. Coordinates are first-pass app coordinates and should be verified before production use.</div>
+    <div class="footer">Bridge clearances are bridge elevation minus current lake level. Full-pool basis is 660 ft MSL. Bridge marker coordinates are stored in data/bridges.json from the master bridge database.</div>
   </section>
 </main>
 <div class="sticky-footer" id="stickyFooter">
@@ -90,6 +90,6 @@
   </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="/assets/app.js?v=3.1.3"></script>
+<script src="/assets/app.js?v=3.1.5"></script>
 </body>
 </html>

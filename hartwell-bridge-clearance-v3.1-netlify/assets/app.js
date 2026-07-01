@@ -47,11 +47,23 @@ async function loadBridges(){
   const cached = localStorage.getItem('bridges_v3_cache');
   try {
     const res = await fetch('/data/bridges.json', {cache:'no-cache'});
-    state.bridges = await res.json();
+    state.bridges = normalizeBridges(await res.json());
     localStorage.setItem('bridges_v3_cache', JSON.stringify(state.bridges));
   } catch {
-    if (cached) state.bridges = JSON.parse(cached);
+    if (cached) state.bridges = normalizeBridges(JSON.parse(cached));
   }
+}
+
+function normalizeBridges(bridges){
+  return bridges.map(b => ({
+    ...b,
+    bridgeName: b.bridgeName || b.name,
+    roadName: b.roadName || b.road,
+    lakeArm: b.lakeArm || b.waterway,
+    name: b.name || b.bridgeName,
+    road: b.road || b.roadName,
+    waterway: b.waterway || b.lakeArm
+  }));
 }
 
 function bindEvents(){
@@ -236,7 +248,7 @@ function sortRows(rows){
   else if(mode==='ahead') rows.sort((a,b)=>(a.ahead?0:1)-(b.ahead?0:1) || (a.aheadScore??999)-(b.aheadScore??999) || (a.distance??9999)-(b.distance??9999));
   else if(mode==='margin') rows.sort((a,b)=>a.margin-b.margin);
   else if(mode==='clearance') rows.sort((a,b)=>a.available-b.available);
-  else if(mode==='name') rows.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(mode==='name') rows.sort((a,b)=>a.bridgeName.localeCompare(b.bridgeName));
   else rows.sort((a,b)=> state.user ? ((a.ahead?0:1)-(b.ahead?0:1) || (a.distance??9999)-(b.distance??9999)) : a.margin-b.margin);
 }
 
@@ -244,7 +256,7 @@ function renderList(rows){
   $('list').innerHTML = rows.map(r=>`
     <article class="bridge ${state.expandedBridgeIds.has(r.id)?'expanded':''}">
       <button class="bridge-toggle" type="button" data-bridge-id="${escapeHtml(r.id)}" aria-expanded="${state.expandedBridgeIds.has(r.id)}" aria-controls="bridge-details-${escapeHtml(r.id)}">
-        <span class="bridge-name">${escapeHtml(r.name)}</span>
+        <span class="bridge-name">${escapeHtml(r.bridgeName)}</span>
         <span class="bridge-summary">
           <span class="tag ${r.status}">${r.status==='pass'?'PASS':r.status==='caution'?'CAUTION':'NO-GO'}</span>
           ${r.ahead?'<span class="tag caution">NEXT AHEAD</span>':''}
@@ -260,7 +272,7 @@ function renderList(rows){
           <div><span class="small">Bridge elev.</span><div class="value">${fmt(r.elev)}</div></div>
           <div><span class="small">Full-pool clearance</span><div class="value">${fmt(r.full)}</div></div>
         </div>
-        <p class="small">${escapeHtml(r.waterway)} • ${escapeHtml(r.road)}${r.bearing!==null?' • Bearing '+Math.round(r.bearing)+'°':''}</p>
+        <p class="small">${escapeHtml(r.lakeArm)} • ${escapeHtml(r.roadName)}${r.bearing!==null?' • Bearing '+Math.round(r.bearing)+'°':''}</p>
         <p class="small"><a target="_blank" rel="noopener" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a></p>
       </div>
     </article>`).join('');
@@ -327,7 +339,7 @@ function userIcon(){ return L.divIcon({className:'', html:'<div class="dot"></di
 function updateMapMarkers(rows){
   if(!state.map || !window.L) return;
   for(const r of rows){
-    const popup = `<b>${escapeHtml(r.name)}</b><br>${r.status.toUpperCase()}<br>Available: ${fmt(r.available)} ft<br>Margin: ${fmt(r.margin)} ft<br>${r.distance!==null?fmt(r.distance)+' mi away<br>':''}<a target="_blank" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a>`;
+    const popup = `<b>${escapeHtml(r.bridgeName)}</b><br>${r.status.toUpperCase()}<br>Available: ${fmt(r.available)} ft<br>Margin: ${fmt(r.margin)} ft<br>${r.distance!==null?fmt(r.distance)+' mi away<br>':''}<a target="_blank" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a>`;
     const existing=state.bridgeMarkers.get(r.id);
     if(existing){ existing.setIcon(bridgeIcon(r.status)); existing.setPopupContent(popup); }
     else { state.bridgeMarkers.set(r.id, L.marker([r.lat,r.lon], {icon:bridgeIcon(r.status)}).addTo(state.map).bindPopup(popup)); }
