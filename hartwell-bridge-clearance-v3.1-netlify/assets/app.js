@@ -254,7 +254,7 @@ function sortRows(rows){
 
 function renderList(rows){
   $('list').innerHTML = rows.map(r=>`
-    <article class="bridge ${state.expandedBridgeIds.has(r.id)?'expanded':''}">
+    <article class="bridge ${state.expandedBridgeIds.has(r.id)?'expanded':''}" data-bridge-id="${escapeHtml(r.id)}">
       <button class="bridge-toggle" type="button" data-bridge-id="${escapeHtml(r.id)}" aria-expanded="${state.expandedBridgeIds.has(r.id)}" aria-controls="bridge-details-${escapeHtml(r.id)}">
         <span class="bridge-name">${escapeHtml(r.bridgeName)}</span>
         <span class="bridge-summary">
@@ -273,7 +273,6 @@ function renderList(rows){
           <div><span class="small">Full-pool clearance</span><div class="value">${fmt(r.full)}</div></div>
         </div>
         <p class="small">${escapeHtml(r.lakeArm)} • ${escapeHtml(r.roadName)}${r.bearing!==null?' • Bearing '+Math.round(r.bearing)+'°':''}</p>
-        <p class="small"><a target="_blank" rel="noopener" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a></p>
       </div>
     </article>`).join('');
 }
@@ -283,14 +282,23 @@ function handleBridgeToggle(event){
   if(!button) return;
   const id = button.dataset.bridgeId;
   if(!id) return;
-  if(state.expandedBridgeIds.has(id)) state.expandedBridgeIds.delete(id);
-  else state.expandedBridgeIds.add(id);
-  const article = button.closest('.bridge');
+  setBridgeExpanded(id, !state.expandedBridgeIds.has(id), {scroll:false});
+}
+
+function setBridgeExpanded(id, expanded=true, {scroll=false}={}){
+  if(expanded) state.expandedBridgeIds.add(id);
+  else state.expandedBridgeIds.delete(id);
+  const article = document.querySelector(`.bridge[data-bridge-id="${cssEscape(id)}"]`);
+  const button = article?.querySelector('.bridge-toggle');
   const details = article?.querySelector('.bridge-details');
-  const expanded = state.expandedBridgeIds.has(id);
-  button.setAttribute('aria-expanded', String(expanded));
+  button?.setAttribute('aria-expanded', String(expanded));
   article?.classList.toggle('expanded', expanded);
   if(details) details.hidden = !expanded;
+  if(scroll && article){
+    article.scrollIntoView({behavior:'smooth', block:'center'});
+    article.classList.add('highlight');
+    setTimeout(()=>article.classList.remove('highlight'), 1300);
+  }
 }
 
 function updateFooter(rows,lake,boat,buffer,required){
@@ -325,11 +333,16 @@ function updateSortNote(){
 function initMap(){
   if(!window.L){
     $('mapNote').textContent = 'Map library could not load. Bridge list and clearance calculations still work.';
-    $('map').innerHTML = '<div class="map-fallback">Map unavailable. Use the bridge list or Open in Maps links.</div>';
+    $('map').innerHTML = '<div class="map-fallback">Map unavailable. Use the bridge list below for bridge details.</div>';
     return;
   }
   state.map = L.map('map', {scrollWheelZoom:false}).setView([34.55,-82.95], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
+  state.map.on('popupopen', event => {
+    const button = event.popup.getElement()?.querySelector('.popup-details-btn');
+    if(!button) return;
+    button.addEventListener('click', () => setBridgeExpanded(button.dataset.bridgeId, true, {scroll:true}), {once:true});
+  });
   fitMap();
   refreshMapLayout();
 }
@@ -339,12 +352,36 @@ function userIcon(){ return L.divIcon({className:'', html:'<div class="dot"></di
 function updateMapMarkers(rows){
   if(!state.map || !window.L) return;
   for(const r of rows){
-    const popup = `<b>${escapeHtml(r.bridgeName)}</b><br>${r.status.toUpperCase()}<br>Available: ${fmt(r.available)} ft<br>Margin: ${fmt(r.margin)} ft<br>${r.distance!==null?fmt(r.distance)+' mi away<br>':''}<a target="_blank" href="https://maps.google.com/?q=${r.lat},${r.lon}">Open in Maps</a>`;
+    const popup = bridgePopupHtml(r);
     const existing=state.bridgeMarkers.get(r.id);
     if(existing){ existing.setIcon(bridgeIcon(r.status)); existing.setPopupContent(popup); }
-    else { state.bridgeMarkers.set(r.id, L.marker([r.lat,r.lon], {icon:bridgeIcon(r.status)}).addTo(state.map).bindPopup(popup)); }
+    else {
+      const marker = L.marker([r.lat,r.lon], {icon:bridgeIcon(r.status)}).addTo(state.map).bindPopup(popup, {className:'bridge-popup'});
+      marker.on('click', () => zoomToBridge(r));
+      state.bridgeMarkers.set(r.id, marker);
+    }
   }
   refreshMapLayout();
+}
+function bridgePopupHtml(r){
+  return `
+    <div class="map-popup-card">
+      <div class="popup-title">${escapeHtml(r.bridgeName)}</div>
+      <div class="popup-subtitle">${escapeHtml(r.lakeArm)} • ${escapeHtml(r.roadName)}</div>
+      <div class="popup-status ${r.status}">${r.status==='pass'?'PASS':r.status==='caution'?'CAUTION':'NO-GO'}</div>
+      <div class="popup-grid">
+        <div><span>Available</span><b>${fmt(r.available)} ft</b></div>
+        <div><span>Margin</span><b>${fmt(r.margin)} ft</b></div>
+        <div><span>Bridge elev.</span><b>${fmt(r.elev)}</b></div>
+        <div><span>Full pool</span><b>${fmt(r.full)}</b></div>
+      </div>
+      ${r.distance!==null?`<div class="popup-distance">${fmt(r.distance)} mi away</div>`:''}
+      <button class="popup-details-btn" type="button" data-bridge-id="${escapeHtml(r.id)}">More details</button>
+    </div>`;
+}
+function zoomToBridge(r){
+  if(!state.map) return;
+  state.map.setView([r.lat,r.lon], Math.max(state.map.getZoom(), 15), {animate:true});
 }
 function updateUserMarker(){
   if(!state.map || !state.user || !window.L) return;
@@ -383,5 +420,6 @@ function angleDiff(a,b){ return Math.abs(((b-a+540)%360)-180); }
 function ageMinutes(iso){ const t=new Date(iso).getTime(); return Number.isFinite(t)?(Date.now()-t)/60000:null; }
 function formatTime(iso){ try{return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});}catch{return iso||'unknown time'} }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function cssEscape(s){ return String(s).replace(/["\\]/g, '\\$&'); }
 
 document.addEventListener('DOMContentLoaded', init);
