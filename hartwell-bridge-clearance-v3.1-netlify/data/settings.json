@@ -6,5 +6,7 @@
   "cautionMargin": 2.0,
   "staleAfterMinutes": 180,
   "lakeLevelEndpoint": "/.netlify/functions/lake-level",
-  "directUsgsEndpoint": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=02187010&parameterCd=00062&siteStatus=all"
+  "directUsgsEndpoint": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=02187010&parameterCd=00062&siteStatus=all",
+  "googleMapsApiKey": "",
+  "googleMapsMapId": ""
 }

@@ -4,6 +4,8 @@ Bridge records live in `data/bridges.json`.
 
 The current app dataset was loaded from `Hartwell_Bridge_Master_Database_v2.xlsx`, sheet `Bridge Master Database`.
 
+Map provider settings live in `data/settings.json`. To use Google Maps, add a restricted browser key to `googleMapsApiKey`. Keep this blank until the key is restricted to the live Netlify domain, because browser map keys are visible to visitors. If the key is blank or Google Maps fails to load, the app automatically uses the backup map provider so clearance checks, GPS sorting, bridge cards, and markers still work.
+
 Each record keeps the original app fields (`name`, `road`, `waterway`, `lat`, `lon`) so older app logic and cached data continue to work. Newer, clearer fields sit beside them:
 
 - `bridgeName`: display name for the physical bridge record.

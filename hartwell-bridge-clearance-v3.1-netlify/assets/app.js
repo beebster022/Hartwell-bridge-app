@@ -1,13 +1,15 @@
 'use strict';
 
 const state = {
-  settings: { version:'3.1', fullPool:660, boatHeight:7.83, safetyBuffer:1, cautionMargin:2, staleAfterMinutes:180, lakeLevelEndpoint:'/.netlify/functions/lake-level', directUsgsEndpoint:'https://waterservices.usgs.gov/nwis/iv/?format=json&sites=02187010&parameterCd=00062&siteStatus=all' },
+  settings: { version:'3.1', fullPool:660, boatHeight:7.83, safetyBuffer:1, cautionMargin:2, staleAfterMinutes:180, lakeLevelEndpoint:'/.netlify/functions/lake-level', directUsgsEndpoint:'https://waterservices.usgs.gov/nwis/iv/?format=json&sites=02187010&parameterCd=00062&siteStatus=all', googleMapsApiKey:'', googleMapsMapId:'' },
   bridges: [],
   user: null,
   heading: null,
   watchId: null,
   soundEnabled: false,
   map: null,
+  mapProvider: '',
+  googleInfoWindow: null,
   userMarker: null,
   bridgeMarkers: new Map(),
   latestRows: [],
@@ -28,7 +30,7 @@ async function init(){
   await loadSettings();
   await loadBridges();
   bindEvents();
-  initMap();
+  await initMap();
   restoreLastKnown();
   calculate();
   if(location.protocol !== 'https:' && location.hostname !== 'localhost'){ $('gpsNote').textContent='GPS requires HTTPS. Upload this folder to Netlify, then open the Netlify URL on your iPhone.'; }
@@ -330,31 +332,133 @@ function updateSortNote(){
   $('sortNote').textContent = labels[mode] || 'Sorted bridges.';
 }
 
-function initMap(){
+async function initMap(){
+  const googleKey = String(state.settings.googleMapsApiKey || '').trim();
+  if(googleKey){
+    try{
+      window.gm_authFailure = () => useBackupMap('Google Maps key was rejected. Using the backup map.');
+      await loadGoogleMaps(googleKey);
+      initGoogleMap();
+      return;
+    }catch(err){
+      useBackupMap('Google Maps could not load. Using the backup map.');
+      return;
+    }
+  }
+  initLeafletMap();
+}
+
+function loadGoogleMaps(key){
+  if(window.google?.maps) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const callbackName = `initHartwellGoogleMap_${Date.now()}`;
+    let settled = false;
+    const fail = error => {
+      if(settled) return;
+      settled = true;
+      delete window[callbackName];
+      reject(error);
+    };
+    window[callbackName] = () => {
+      if(settled) return;
+      settled = true;
+      delete window[callbackName];
+      resolve();
+    };
+    const script = document.createElement('script');
+    const params = new URLSearchParams({key, callback:callbackName, v:'weekly'});
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => fail(new Error('Google Maps script failed to load'));
+    document.head.appendChild(script);
+  });
+}
+
+function useBackupMap(note){
+  $('mapNote').textContent = note;
+  $('map').innerHTML = '';
+  state.map = null;
+  state.mapProvider = '';
+  state.googleInfoWindow = null;
+  state.userMarker = null;
+  state.bridgeMarkers = new Map();
+  initLeafletMap();
+  if(state.user) updateUserMarker();
+  if(state.latestRows.length) updateMapMarkers(state.latestRows);
+}
+
+function initGoogleMap(){
+  if(!window.google?.maps){
+    initLeafletMap();
+    return;
+  }
+  const options = {
+    center:{lat:34.55,lng:-82.95},
+    zoom:10,
+    mapTypeId:'roadmap',
+    gestureHandling:'greedy',
+    streetViewControl:false,
+    fullscreenControl:true,
+    mapTypeControl:true
+  };
+  if(state.settings.googleMapsMapId) options.mapId = state.settings.googleMapsMapId;
+  state.mapProvider = 'google';
+  state.map = new google.maps.Map($('map'), options);
+  state.googleInfoWindow = new google.maps.InfoWindow();
+  state.googleInfoWindow.addListener('domready', bindPopupDetailsButton);
+  $('mapNote').textContent = 'Google Maps active. Tap a bridge marker for details.';
+  fitMap();
+}
+
+function initLeafletMap(){
   if(!window.L){
     $('mapNote').textContent = 'Map library could not load. Bridge list and clearance calculations still work.';
     $('map').innerHTML = '<div class="map-fallback">Map unavailable. Use the bridge list below for bridge details.</div>';
     return;
   }
+  state.mapProvider = 'leaflet';
   state.map = L.map('map', {scrollWheelZoom:false}).setView([34.55,-82.95], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
   state.map.on('popupopen', event => {
-    const button = event.popup.getElement()?.querySelector('.popup-details-btn');
-    if(!button) return;
-    button.addEventListener('click', () => setBridgeExpanded(button.dataset.bridgeId, true, {scroll:true}), {once:true});
+    bindPopupDetailsButton(event.popup.getElement());
   });
   fitMap();
   refreshMapLayout();
 }
+function bindPopupDetailsButton(root=document){
+  const button = root?.querySelector?.('.popup-details-btn') || document.querySelector('.popup-details-btn');
+  if(!button || button.dataset.bound === 'true') return;
+  button.dataset.bound = 'true';
+  button.addEventListener('click', () => setBridgeExpanded(button.dataset.bridgeId, true, {scroll:true}));
+}
 function markerColor(status){ return status==='pass'?'#2e8b57':status==='caution'?'#c39122':'#b03a2e'; }
 function bridgeIcon(status){ return L.divIcon({className:'', html:`<div style="width:18px;height:18px;border-radius:50%;background:${markerColor(status)};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`, iconSize:[18,18], iconAnchor:[9,9]}); }
+function googleBridgeIcon(status){ return {path:google.maps.SymbolPath.CIRCLE, fillColor:markerColor(status), fillOpacity:1, strokeColor:'#fff', strokeWeight:3, scale:8}; }
 function userIcon(){ return L.divIcon({className:'', html:'<div class="dot"></div>', iconSize:[16,16], iconAnchor:[8,8]}); }
+function googleUserIcon(){ return {path:google.maps.SymbolPath.CIRCLE, fillColor:'#1775ff', fillOpacity:1, strokeColor:'#fff', strokeWeight:3, scale:8}; }
 function updateMapMarkers(rows){
-  if(!state.map || !window.L) return;
+  if(!state.map) return;
   for(const r of rows){
     const popup = bridgePopupHtml(r);
     const existing=state.bridgeMarkers.get(r.id);
-    if(existing){ existing.setIcon(bridgeIcon(r.status)); existing.setPopupContent(popup); }
+    if(state.mapProvider === 'google'){
+      const position = {lat:r.lat, lng:r.lon};
+      if(existing){
+        existing.setPosition(position);
+        existing.setIcon(googleBridgeIcon(r.status));
+      } else {
+        const marker = new google.maps.Marker({position, map:state.map, icon:googleBridgeIcon(r.status), title:r.bridgeName});
+        marker.addListener('click', () => {
+          const latest = state.latestRows.find(row => row.id === r.id) || r;
+          zoomToBridge(latest);
+          state.googleInfoWindow.setContent(bridgePopupHtml(latest));
+          state.googleInfoWindow.open({anchor:marker, map:state.map});
+        });
+        state.bridgeMarkers.set(r.id, marker);
+      }
+    }
+    else if(window.L && existing){ existing.setIcon(bridgeIcon(r.status)); existing.setPopupContent(popup); }
     else {
       const marker = L.marker([r.lat,r.lon], {icon:bridgeIcon(r.status)}).addTo(state.map).bindPopup(popup, {className:'bridge-popup'});
       marker.on('click', () => zoomToBridge(r));
@@ -381,20 +485,53 @@ function bridgePopupHtml(r){
 }
 function zoomToBridge(r){
   if(!state.map) return;
-  state.map.setView([r.lat,r.lon], Math.max(state.map.getZoom(), 15), {animate:true});
+  if(state.mapProvider === 'google'){
+    state.map.setCenter({lat:r.lat, lng:r.lon});
+    state.map.setZoom(Math.max(state.map.getZoom() || 10, 15));
+  } else {
+    state.map.setView([r.lat,r.lon], Math.max(state.map.getZoom(), 15), {animate:true});
+  }
 }
 function updateUserMarker(){
-  if(!state.map || !state.user || !window.L) return;
-  const ll=[state.user.lat,state.user.lon];
-  if(state.userMarker) state.userMarker.setLatLng(ll);
-  else state.userMarker=L.marker(ll,{icon:userIcon(), zIndexOffset:1000}).addTo(state.map).bindPopup('Your location');
+  if(!state.map || !state.user) return;
+  if(state.mapProvider === 'google'){
+    const position = {lat:state.user.lat, lng:state.user.lon};
+    if(state.userMarker) state.userMarker.setPosition(position);
+    else state.userMarker = new google.maps.Marker({position, map:state.map, icon:googleUserIcon(), title:'Your location', zIndex:1000});
+  } else if(window.L){
+    const ll=[state.user.lat,state.user.lon];
+    if(state.userMarker) state.userMarker.setLatLng(ll);
+    else state.userMarker=L.marker(ll,{icon:userIcon(), zIndexOffset:1000}).addTo(state.map).bindPopup('Your location');
+  }
 }
-function centerOnMe(){ if(state.map && state.user) state.map.setView([state.user.lat,state.user.lon], 14); else useGps(); }
-function fitMap(){ if(!state.map || !state.bridges.length || !window.L) return; const pts=state.bridges.map(b=>[b.lat,b.lon]); if(state.user) pts.push([state.user.lat,state.user.lon]); state.map.fitBounds(L.latLngBounds(pts), {padding:[24,24]}); refreshMapLayout(); }
+function centerOnMe(){
+  if(state.map && state.user){
+    if(state.mapProvider === 'google'){
+      state.map.setCenter({lat:state.user.lat, lng:state.user.lon});
+      state.map.setZoom(14);
+    } else {
+      state.map.setView([state.user.lat,state.user.lon], 14);
+    }
+  } else useGps();
+}
+function fitMap(){
+  if(!state.map || !state.bridges.length) return;
+  if(state.mapProvider === 'google'){
+    const bounds = new google.maps.LatLngBounds();
+    state.bridges.forEach(b => bounds.extend({lat:b.lat, lng:b.lon}));
+    if(state.user) bounds.extend({lat:state.user.lat, lng:state.user.lon});
+    state.map.fitBounds(bounds, 24);
+  } else if(window.L) {
+    const pts=state.bridges.map(b=>[b.lat,b.lon]);
+    if(state.user) pts.push([state.user.lat,state.user.lon]);
+    state.map.fitBounds(L.latLngBounds(pts), {padding:[24,24]});
+  }
+  refreshMapLayout();
+}
 
 let mapRefreshTimer = null;
 function refreshMapLayout(){
-  if(!state.map || !window.L) return;
+  if(!state.map || state.mapProvider === 'google' || !window.L) return;
   if(mapRefreshTimer) clearTimeout(mapRefreshTimer);
   const redraw = () => {
     const el = $('map');
